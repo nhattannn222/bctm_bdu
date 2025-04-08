@@ -1,0 +1,28 @@
+version: '3.9'
+
+services:
+  bctm_db:
+    image: mysql:8.0
+    container_name: mysql-db
+    environment:
+      MYSQL_ROOT_PASSWORD: nhattan123
+    volumes:
+      - mysql_data:/var/lib/mysql
+    ports:
+      - "3309:3306"
+
+  bctm_be:
+    build: .
+    container_name: django-app
+    command: gunicorn backend_bctm.wsgi:application --bind 0.0.0.0:8000
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - bctm_db
+    environment:
+      - DEBUG=1
+
+volumes:
+  mysql_data:
