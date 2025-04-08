@@ -10,6 +10,7 @@ class BaoCaoHangTuan(models.Model):
         max_length=20,
         choices=[
             ("Đang thực hiện", "Đang thực hiện"),
+            ("Chờ duyệt", "Chờ duyệt"),
             ("Từ chối", "Từ chối"),
             ("Hoàn thành", "Hoàn thành"),
             ("Quá hạn", "Quá hạn"),

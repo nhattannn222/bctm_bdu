@@ -5,7 +5,7 @@ class GiangVien (models.Model):
     maGiangVien = models.AutoField(primary_key=True)
     tenGiangVien = models.CharField(max_length=255)
     chucVu = models.CharField(max_length=255)
-    maDonVi = models.ForeignKey(DonVi, on_delete=models.CASCADE)
+    maDonVi = models.ForeignKey(DonVi, on_delete=models.CASCADE, db_column="maDonVi")
 
     class Meta:
         db_table = "giangvien"

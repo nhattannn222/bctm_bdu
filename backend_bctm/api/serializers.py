@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import BaoCaoHangTuan, TaiKhoan, DanhMucBaoCao, NoiDung, DanhMuc
+from .models import BaoCaoHangTuan, TaiKhoan, DanhMucBaoCao, NoiDung, DanhMuc, DonVi, GiangVien
 
     
 class TaiKhoanSerializer(serializers.ModelSerializer):
@@ -26,3 +26,15 @@ class NoiDungSerializer(serializers.ModelSerializer):
     class Meta:
         model = NoiDung
         fields = "__all__"
+
+class DonViSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DonVi
+        fields = ['maDonVi', 'tenDonVi']
+
+class GiangVienSerializer(serializers.ModelSerializer):
+    maDonVi = DonViSerializer() 
+
+    class Meta:
+        model = GiangVien
+        fields = ['maGiangVien', 'tenGiangVien', 'chucVu', 'maDonVi']

@@ -4,7 +4,7 @@ from rest_framework.views import APIView
 from rest_framework import status
 from datetime import date, time, timedelta
 from rest_framework_simplejwt.tokens import RefreshToken
-from .serializers import TaiKhoanSerializer, BaoCaoHangTuanSerializer, DanhMucBaoCaoSerializer, NoiDungSerializer, DanhMucSerializer
+from .serializers import TaiKhoanSerializer, BaoCaoHangTuanSerializer, DanhMucBaoCaoSerializer, NoiDungSerializer, DanhMucSerializer, GiangVienSerializer, DonViSerializer
 from .models import TaiKhoan, BaoCaoHangTuan, DonVi, DanhMucBaoCao, DanhMuc, NoiDung, LoaiNoiDung
 from rest_framework.exceptions import NotFound
 
@@ -27,7 +27,7 @@ class DangNhap(APIView):
         try:
             user = TaiKhoan.objects.get(taiKhoan=tai_khoan)
         except TaiKhoan.DoesNotExist:
-            return Response({"error": "Tài khoản không tồn tại"}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": "Tài khoản không tồn tại"}, status=status.HTTP_400_BAD_REQUEST)
 
         # Kiểm tra mật khẩu
         if mat_khau != user.matKhau:
@@ -40,18 +40,25 @@ class DangNhap(APIView):
         # Lưu token vào trường 'token' của người dùng
         user.token = access_token
         user.save()
+        nguoidung = TaiKhoanSerializer(user)
 
+        giang_vien = None
+        don_vi = None
+
+        if user.maGiangVien:
+            giang_vien = GiangVienSerializer(user.maGiangVien).data
         return Response({
             "message": "Đăng nhập thành công!",
             "refresh": str(refresh),
             "access": access_token,
-            "maTaiKhoan": user.maTaiKhoan,
+            "user": nguoidung.data,
+            "giangVien": giang_vien,  
         }, status=status.HTTP_200_OK)
 
 class DangXuat(APIView):
-    def post(self, request, id):
+    def post(self, request, token):
         try:
-            user = TaiKhoan.objects.get(maTaiKhoan=id)
+            user = TaiKhoan.objects.get(token=token)
         except TaiKhoan.DoesNotExist:
             raise NotFound(detail="Tài khoản không tồn tại.")
 
@@ -118,49 +125,59 @@ def get_danh_sach_danh_muc(request):
     serializer = DanhMucSerializer(danh_muc_bao_cao, many=True)
     return Response(serializer.data)
 
-class ThemDanhMucBaoCao(APIView):
-    def post(self, request, maBaoCao, maDanhMuc):
-        # Kiểm tra xem maBaoCao có tồn tại không
+class ThemNoiDungBaoCao(APIView):
+    def post(self, request, maBaoCao):
+        data = request.data
         try:
+            # Kiểm tra xem báo cáo có tồn tại không
             baocao = BaoCaoHangTuan.objects.get(maBaoCao=maBaoCao)
         except BaoCaoHangTuan.DoesNotExist:
             return Response({"error": "maBaoCao không tồn tại"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Kiểm tra xem maDanhMuc có tồn tại không
-        try:
-            danhmuc = DanhMuc.objects.get(maDanhMuc=maDanhMuc)
-        except DanhMuc.DoesNotExist:
-            return Response({"error": "maDanhMuc không tồn tại"}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Tạo bản ghi mới trong danhmucbaocao
-        danhmuc_baocao = DanhMucBaoCao.objects.create(maBaoCao=baocao, maDanhMuc=danhmuc)
-        serializer = DanhMucBaoCaoSerializer(danhmuc_baocao)
-
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-    
-class ThemNoiDung(APIView):
-    def post(self, request):
-        maDMBC = request.data.get("maDMBC")
-        noiDung1 = request.data.get("noiDung1")
-        noiDung2 = request.data.get("noiDung2")
-        noiDung3 = request.data.get("noiDung3")
-
-        # Kiểm tra maDMBC có tồn tại không
-        try:
-            danh_muc_bao_cao = DanhMucBaoCao.objects.get(maDMBC=maDMBC)
-        except DanhMucBaoCao.DoesNotExist:
-            return Response({"error": "maDMBC không tồn tại"}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Tạo 3 bản ghi nội dung
+        baocao.trangThai = 'Chờ duyệt'  # Giả sử 'CHO_DUYET' là giá trị trạng thái 'chờ duyệt'
+        baocao.save()
+        # Khởi tạo danh sách để chứa các bản ghi DanhMucBaoCao và NoiDung
+        ds_danhmuc_baocao = []
         ds_noidung = []
-        for maLoaiNoiDung, noiDung in zip([1, 2, 3], [noiDung1, noiDung2, noiDung3]):
-            if noiDung:  # Chỉ thêm nếu có nội dung
-                noidung = NoiDung.objects.create(
-                    noiDung=noiDung,
-                    maLoaiNoiDung_id=maLoaiNoiDung,
-                    maDMBC=danh_muc_bao_cao
-                )
-                ds_noidung.append(noidung)
 
-        serializer = NoiDungSerializer(ds_noidung, many=True)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        # Lặp qua mỗi phần tử trong dữ liệu
+        for item in data:
+            maDanhMuc = item.get("maDanhMuc")
+            noiDungList = item.get("noiDung")
+            
+            # Kiểm tra xem danh mục có tồn tại không
+            try:
+                danhmuc = DanhMuc.objects.get(maDanhMuc=maDanhMuc)
+            except DanhMuc.DoesNotExist:
+                return Response({"error": f"maDanhMuc {maDanhMuc} không tồn tại"}, status=status.HTTP_400_BAD_REQUEST)
+
+            # Thêm bản ghi vào bảng DanhMucBaoCao
+            danhmuc_baocao = DanhMucBaoCao.objects.create(maBaoCao=baocao, maDanhMuc=danhmuc)
+            ds_danhmuc_baocao.append(danhmuc_baocao)
+
+            # Tạo các bản ghi vào bảng NoiDung từ danh sách "noiDung"
+            for noiDungItem in noiDungList:
+                ketQua = noiDungItem.get("ketQua")
+                noiDungTuanSau = noiDungItem.get("noiDungTuanSau")
+                deXuatKienNghi = noiDungItem.get("deXuatKienNghi")
+
+                # Tạo các bản ghi vào bảng NoiDung cho từng loại nội dung
+                for maLoaiNoiDung, noiDung in zip([1, 2, 3], [ketQua, noiDungTuanSau, deXuatKienNghi]):
+                    if noiDung:  # Chỉ thêm nếu có nội dung
+                        noidung = NoiDung.objects.create(
+                            noiDung=noiDung,
+                            maLoaiNoiDung_id=maLoaiNoiDung,
+                            maDMBC=danhmuc_baocao
+                        )
+                        ds_noidung.append(noidung)
+
+        # Gửi phản hồi với dữ liệu đã thêm vào bảng DanhMucBaoCao và NoiDung
+        danhmuc_serializer = DanhMucBaoCaoSerializer(ds_danhmuc_baocao, many=True)
+        noidung_serializer = NoiDungSerializer(ds_noidung, many=True)
+
+        return Response({
+            "message": "Thêm thành công",
+            "danhmuc_baocao": danhmuc_serializer.data,
+            "noidung": noidung_serializer.data
+        }, status=status.HTTP_201_CREATED)
+

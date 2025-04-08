@@ -1,8 +1,8 @@
-from celery import shared_task
-from django.utils.timezone import now
-from .services import TaoBaoCaoTuan
+from apscheduler.schedulers.background import BackgroundScheduler
+from .services import tao_bao_cao_tuan, cap_nhat_bao_cao_qua_han
 
-@shared_task
-def them_baocao_moi():
-    obj = TaoBaoCaoTuan()
-    return obj.run()
+def start():
+    scheduler = BackgroundScheduler(timezone="Asia/Ho_Chi_Minh")
+    scheduler.add_job(tao_bao_cao_tuan, 'cron', day_of_week='fri', hour=8, minute=0)
+    scheduler.add_job(cap_nhat_bao_cao_qua_han, 'cron', day_of_week='fri', hour=22, minute=1)
+    scheduler.start()

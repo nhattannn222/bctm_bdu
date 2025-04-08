@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-2jp!k(4(x7pad0d6+&ezajoi9$jke(t4m%)6d$re1uf4*=nx04
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -41,8 +41,7 @@ INSTALLED_APPS = [
     'rest_framework',  
     'rest_framework_simplejwt',
     'corsheaders',    
-    'api',
-    'django_celery_beat',
+    'api.apps.ApiConfig',
 ]
 
 
@@ -63,6 +62,7 @@ CORS_ALLOW_ALL_ORIGINS = True # Chấp nhận mọi frontend
 # ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -132,7 +132,8 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Ho_Chi_Minh'
+CELERY_TIMEZONE = 'Asia/Ho_Chi_Minh'
 
 USE_I18N = True
 
@@ -149,6 +150,3 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-CELERY_BROKER_URL = 'redis://localhost:6379/0'  # Redis làm message broker
-CELERY_ACCEPT_CONTENT = ['json']
-CELERY_TASK_SERIALIZER = 'json'
